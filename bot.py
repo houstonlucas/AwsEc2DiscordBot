@@ -1,10 +1,15 @@
-import discord, asyncio, os, boto3
+import os, sys
+
+import discord
+import asyncio
+import boto3
 
 client = discord.Client()
 
-ec2 = boto3.resource('ec2')
-#Temp
-instance = ec2.Instance('i-06bc2e80c17a5636c')
+ec2 = boto3.resource('ec2', region_name='us-west-1')
+
+# TODO: create a click interface
+instance = ec2.Instance(sys.argv[1])
 
 @client.event
 async def on_ready():
@@ -15,25 +20,23 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    print(message)
     memberIDs = (member.id for member in message.mentions)
-    if client.user.id in memberIDs:
+    if client.user.id in memberIDs and message.channel.name == "minecraft-upper":
+        print(message.content)
+        channel = message.channel
         if 'stop' in message.content:
             if turnOffInstance():
-                await client.send_message(message.channel, 'AWS Instance stopping')
+                await channel.send("AWS Instance stopping")
             else:
-                await client.send_message(message.channel, 'Error stopping AWS Instance')
+                await channel.send('Error stopping AWS Instance')
         elif 'start' in message.content:
             if turnOnInstance():
-                await client.send_message(message.channel, 'AWS Instance starting')
+                await channel.send('AWS Instance starting')
             else:
-                await client.send_message(message.channel, 'Error starting AWS Instance')
-        elif 'state' in message.content:
-            await client.send_message(message.channel, 'AWS Instance state is: ' + getInstanceState())
-        elif 'reboot' in message.content:
-            if rebootInstance():
-                await client.send_message(message.channel, 'AWS Instance rebooting')
-            else:
-                await client.send_message(message.channel, 'Error rebooting AWS Instance')
+                await channel.send('Error starting AWS Instance')
+        elif 'status' in message.content:
+            await channel.send('AWS Instance status is: ' + getInstanceState())
 
 def turnOffInstance():
     try:
@@ -46,7 +49,8 @@ def turnOnInstance():
     try:
         instance.start()
         return True
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 def getInstanceState():
